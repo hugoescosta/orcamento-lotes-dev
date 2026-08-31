@@ -436,7 +436,7 @@
 
   <footer>
     Base: aba "Tabela" &middot; <span id="rowcount"></span> lotes carregados
-    <div class="version-tag">v2.4 · 2026-08-31</div>
+    <div class="version-tag">v2.5 · 2026-08-31</div>
   </footer>
 </div>
 
@@ -588,7 +588,12 @@ forgotForm.addEventListener('submit', async (e) => {
   });
 
   if (error){
-    forgotError.textContent = 'Não foi possível enviar o link. Tente novamente em instantes.';
+    console.error('resetPasswordForEmail error:', error);
+    if (error.code === 'over_email_send_rate_limit' || /rate limit|only request this/i.test(error.message || '')){
+      forgotError.textContent = 'Você pediu um link há pouco tempo — espere cerca de 1 minuto e tente de novo.';
+    } else {
+      forgotError.textContent = 'Não foi possível enviar o link (' + (error.message || 'erro desconhecido') + '). Tente novamente em instantes.';
+    }
   } else {
     forgotSuccess.textContent = 'Link enviado! Verifique seu e-mail (e a caixa de spam) e clique no link para criar uma nova senha.';
   }
