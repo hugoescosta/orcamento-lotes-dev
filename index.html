@@ -436,7 +436,7 @@
 
   <footer>
     Base: aba "Tabela" &middot; <span id="rowcount"></span> lotes carregados
-    <div class="version-tag">v2.6 · 2026-08-31</div>
+    <div class="version-tag">v2.7 · 2026-08-31</div>
   </footer>
 </div>
 
@@ -849,11 +849,14 @@ document.getElementById('go').addEventListener('click', () => {
     const entradaDesc = entrada * (1-desconto);
     const financ = currentCondicao === 'comBalao' ? row[IDX.comBalao] : row[IDX.semBalao];
     const financDesc = financ * (1-desconto);
+    const facilitada = entradaDesc / (divisor + 1);
 
     addArea();
     addSpec('Valor', valor, valorDesc);
     addSpec('Entrada', entrada, entradaDesc);
-    addSpec(`Facilitada em 1 + ${divisor}`, entradaDesc/(divisor+1));
+    if (Math.round(facilitada * 100) !== 0){
+      addSpec(`Facilitada em 1 + ${divisor}`, facilitada);
+    }
     addSpec('Financiamento (144x)', financ, financDesc);
 
     if (currentCondicao === 'comBalao'){
