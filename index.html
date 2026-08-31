@@ -69,24 +69,6 @@
   }
   .sub{color:var(--muted);font-size:14px;max-width:38ch;}
 
-  .plotmap{
-    display:grid;
-    grid-template-columns:repeat(12,1fr);
-    gap:3px;
-    margin:20px 0 22px;
-    padding:14px;
-    background:rgba(0,0,0,0.18);
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-  }
-  .plot{
-    aspect-ratio:1;
-    background:rgba(255,255,255,0.06);
-    border-radius:3px;
-    transition:background .25s ease, transform .25s ease;
-  }
-  .plot.hit{background:var(--amber);box-shadow:0 0 0 2px rgba(224,166,43,.35);}
-
   .card{
     background:var(--paper);
     color:var(--ink);
@@ -380,8 +362,6 @@
     </div>
   </header>
 
-  <div class="plotmap" id="plotmap" aria-hidden="true"></div>
-
   <div class="card">
     <h2>Localização do lote</h2>
     <div class="field-row">
@@ -449,7 +429,7 @@
       <div class="broker-footer-name" id="brokerFooterName"></div>
       <div class="broker-footer-contact" id="brokerFooterContact"></div>
     </div>
-    <div class="version-tag">v3.3 · 2026-08-31</div>
+    <div class="version-tag">v3.4 · 2026-08-31</div>
   </footer>
 </div>
 
@@ -679,15 +659,6 @@ const byCode = new Map();
 LOTES_DATA.forEach(row => byCode.set(row[IDX.quadra] + '-' + row[IDX.lote], row));
 document.getElementById('rowcount').textContent = LOTES_DATA.length;
 
-// signature plot-map: draw a mini grid, highlight cell on lookup
-const plotmap = document.getElementById('plotmap');
-const CELLS = 60;
-for (let i=0;i<CELLS;i++){
-  const d = document.createElement('div');
-  d.className='plot';
-  plotmap.appendChild(d);
-}
-
 const FORMAS_COM_CONDICAO = new Set(['p144']); // formas que hoje têm dados por condição (Sem Balão/Com Balão/Sem Entrada)
 
 let currentForma = 'avista';
@@ -800,12 +771,6 @@ syncFormaUI();
 const fmt = n => n.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
 const fmtArea = n => n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' m²';
 
-function highlightPlot(seed){
-  document.querySelectorAll('.plot').forEach(p=>p.classList.remove('hit'));
-  const idx = Math.abs(seed) % CELLS;
-  plotmap.children[idx].classList.add('hit');
-}
-
 function specRow(label, value, discounted){
   const wrap = document.createElement('div');
   wrap.className='spec';
@@ -852,7 +817,6 @@ document.getElementById('go').addEventListener('click', () => {
 
   emptyState.style.display='none';
   resultCard.style.display='block';
-  highlightPlot(q*97 + l*13);
 
   const codeText = `QUADRA ${row[IDX.quadra]} · LOTE ${row[IDX.lote]} · CÓD. ${row[IDX.quadra]}${row[IDX.lote]}`;
   document.getElementById('codeTag').textContent = codeText;
