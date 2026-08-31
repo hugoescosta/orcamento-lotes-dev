@@ -410,7 +410,7 @@
       </div>
       <div class="field">
         <label for="divisor">Facilitada em 1 +</label>
-        <input type="number" id="divisor" value="2" min="1" max="12" step="1">
+        <input type="number" id="divisor" value="2" min="0" max="12" step="1">
       </div>
     </div>
     <div class="condicao-hint" id="descontoHint"></div>
@@ -436,7 +436,7 @@
 
   <footer>
     Base: aba "Tabela" &middot; <span id="rowcount"></span> lotes carregados
-    <div class="version-tag">v2.7 · 2026-08-31</div>
+    <div class="version-tag">v2.8 · 2026-08-31</div>
   </footer>
 </div>
 
@@ -756,7 +756,10 @@ document.getElementById('go').addEventListener('click', () => {
   const q = parseInt(document.getElementById('quadra').value, 10);
   const l = parseInt(document.getElementById('lote').value, 10);
   const desconto = Math.min(Math.max(parseFloat(document.getElementById('desconto').value)||0, 0), 90) / 100;
-  const divisor = Math.max(parseInt(document.getElementById('divisor').value,10) || 2, 1);
+  const divisor = (() => {
+    const parsed = parseInt(document.getElementById('divisor').value, 10);
+    return Math.max(isNaN(parsed) ? 2 : parsed, 0);
+  })();
 
   const resultCard = document.getElementById('result');
   const emptyState = document.getElementById('emptyState');
@@ -854,7 +857,7 @@ document.getElementById('go').addEventListener('click', () => {
     addArea();
     addSpec('Valor', valor, valorDesc);
     addSpec('Entrada', entrada, entradaDesc);
-    if (Math.round(facilitada * 100) !== 0){
+    if (divisor > 0 && Math.round(facilitada * 100) !== 0){
       addSpec(`Facilitada em 1 + ${divisor}`, facilitada);
     }
     addSpec('Financiamento (144x)', financ, financDesc);
