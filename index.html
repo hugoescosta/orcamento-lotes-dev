@@ -164,6 +164,9 @@
     font-size:11.5px;color:var(--muted);margin-top:7px;line-height:1.4;
     min-height:1px;
   }
+  .condicao-hint.warn-hint{
+    color:#E08A2B;font-weight:600;
+  }
 
   .adjust{display:flex;gap:10px;margin-top:14px;}
   .adjust .field{flex:1;}
@@ -436,7 +439,7 @@
 
   <footer>
     Base: aba "Tabela" &middot; <span id="rowcount"></span> lotes carregados
-    <div class="version-tag">v2.8 · 2026-08-31</div>
+    <div class="version-tag">v2.9 · 2026-08-31</div>
   </footer>
 </div>
 
@@ -702,11 +705,28 @@ function syncFormaUI(){
   if (currentForma === 'avista'){
     divisorInput.disabled = true;
     divisorHint.textContent = 'Não se aplica ao À Vista — pagamento é feito em parcela única.';
+    divisorHint.classList.remove('warn-hint');
   } else {
     divisorInput.disabled = false;
-    divisorHint.textContent = '';
+    checkDivisorWarning();
   }
 }
+
+function checkDivisorWarning(){
+  if (currentForma === 'avista') return;
+  const divisorInput = document.getElementById('divisor');
+  const divisorHint = document.getElementById('divisorHint');
+  const val = parseInt(divisorInput.value, 10);
+  if (!isNaN(val) && val > 2){
+    divisorHint.textContent = 'Atenção: valor acima do padrão (1 + 2). Confirme se é isso mesmo antes de gerar a proposta.';
+    divisorHint.classList.add('warn-hint');
+  } else {
+    divisorHint.textContent = '';
+    divisorHint.classList.remove('warn-hint');
+  }
+}
+
+document.getElementById('divisor').addEventListener('input', checkDivisorWarning);
 
 document.querySelectorAll('#plansForma .plan-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
