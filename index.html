@@ -232,13 +232,6 @@
     margin-top:14px;font-size:9.5px;color:var(--muted);opacity:.5;
     letter-spacing:.03em;
   }
-  .dev-badge{
-    position:fixed;top:8px;left:8px;z-index:999;
-    background:var(--amber);color:var(--navy-deep);
-    font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:700;
-    padding:2px 7px;border-radius:5px;letter-spacing:.06em;
-    opacity:.85;pointer-events:none;
-  }
   .broker{
     text-align:center;font-size:12.5px;color:var(--paper);
     margin-top:18px;padding-top:14px;border-top:1px solid var(--line);
@@ -290,6 +283,22 @@
   .login-error{
     margin-top:12px;font-size:12.5px;color:#C0392B;min-height:1px;
   }
+  .dev-badge{
+    position:fixed;top:8px;left:8px;z-index:999;
+    background:var(--amber);color:var(--navy-deep);
+    font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:700;
+    padding:2px 7px;border-radius:5px;letter-spacing:.06em;
+    opacity:.85;pointer-events:none;
+  }
+  .login-success{
+    margin-top:12px;font-size:12.5px;color:var(--save-deep);min-height:1px;
+    line-height:1.4;
+  }
+  .link-btn{
+    display:block;width:100%;margin-top:16px;background:none;border:none;
+    color:#5A6E7E;font-family:'Inter',sans-serif;font-size:12.5px;
+    text-decoration:underline;cursor:pointer;padding:4px;
+  }
   .logout-btn{
     position:absolute;top:20px;right:16px;
     background:rgba(255,255,255,0.06);border:1px solid var(--line);
@@ -306,16 +315,46 @@
 <div id="loginScreen" class="login-wrap">
   <div class="login-card">
     <div class="brand-logo" style="margin:0 auto 18px;"><img src="logo.png" alt="Militão Imóveis"></div>
-    <h1 class="login-title">Orçamento de Lotes</h1>
-    <div class="login-sub">Acesso restrito — entre com seu e-mail e senha.</div>
-    <form id="loginForm">
-      <label for="loginEmail">E-mail</label>
-      <input type="email" id="loginEmail" autocomplete="username" required>
-      <label for="loginPassword" style="margin-top:12px;">Senha</label>
-      <input type="password" id="loginPassword" autocomplete="current-password" required>
-      <button type="submit" class="go" id="loginBtn" style="margin-top:18px;">Entrar</button>
-      <div class="login-error" id="loginError"></div>
-    </form>
+
+    <div id="loginView">
+      <h1 class="login-title">Orçamento de Lotes</h1>
+      <div class="login-sub">Acesso restrito — entre com seu e-mail e senha.</div>
+      <form id="loginForm">
+        <label for="loginEmail">E-mail</label>
+        <input type="email" id="loginEmail" autocomplete="username" required>
+        <label for="loginPassword" style="margin-top:12px;">Senha</label>
+        <input type="password" id="loginPassword" autocomplete="current-password" required>
+        <button type="submit" class="go" id="loginBtn" style="margin-top:18px;">Entrar</button>
+        <div class="login-error" id="loginError"></div>
+      </form>
+      <button type="button" class="link-btn" id="showForgot">Esqueci minha senha</button>
+    </div>
+
+    <div id="forgotView" style="display:none;">
+      <h1 class="login-title">Redefinir senha</h1>
+      <div class="login-sub">Informe seu e-mail — vamos te enviar um link para criar uma nova senha.</div>
+      <form id="forgotForm">
+        <label for="forgotEmail">E-mail</label>
+        <input type="email" id="forgotEmail" autocomplete="username" required>
+        <button type="submit" class="go" id="forgotBtn" style="margin-top:18px;">Enviar link</button>
+        <div class="login-error" id="forgotError"></div>
+        <div class="login-success" id="forgotSuccess"></div>
+      </form>
+      <button type="button" class="link-btn" id="backToLogin">Voltar para o login</button>
+    </div>
+
+    <div id="resetView" style="display:none;">
+      <h1 class="login-title">Nova senha</h1>
+      <div class="login-sub">Escolha uma nova senha para sua conta.</div>
+      <form id="resetForm">
+        <label for="resetPassword">Nova senha</label>
+        <input type="password" id="resetPassword" autocomplete="new-password" minlength="6" required>
+        <button type="submit" class="go" id="resetBtn" style="margin-top:18px;">Salvar nova senha</button>
+        <div class="login-error" id="resetError"></div>
+        <div class="login-success" id="resetSuccess"></div>
+      </form>
+    </div>
+
   </div>
 </div>
 
@@ -397,7 +436,7 @@
 
   <footer>
     Base: aba "Tabela" &middot; <span id="rowcount"></span> lotes carregados
-    <div class="version-tag">v2.2 · 2026-08-31</div>
+    <div class="version-tag">v2.3 · 2026-08-31</div>
   </footer>
 </div>
 
@@ -410,13 +449,32 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const loginScreen = document.getElementById('loginScreen');
 const appScreen = document.getElementById('appScreen');
+const loginView = document.getElementById('loginView');
+const forgotView = document.getElementById('forgotView');
+const resetView = document.getElementById('resetView');
 const loginForm = document.getElementById('loginForm');
 const loginError = document.getElementById('loginError');
 const loginBtn = document.getElementById('loginBtn');
+const forgotForm = document.getElementById('forgotForm');
+const forgotError = document.getElementById('forgotError');
+const forgotSuccess = document.getElementById('forgotSuccess');
+const forgotBtn = document.getElementById('forgotBtn');
+const resetForm = document.getElementById('resetForm');
+const resetError = document.getElementById('resetError');
+const resetSuccess = document.getElementById('resetSuccess');
+const resetBtn = document.getElementById('resetBtn');
+
+function showLoginView(){
+  loginView.style.display = 'block';
+  forgotView.style.display = 'none';
+  resetView.style.display = 'none';
+  loginError.textContent = '';
+}
 
 function showLogin(message){
   appScreen.style.display = 'none';
   loginScreen.style.display = 'flex';
+  showLoginView();
   loginError.textContent = message || '';
 }
 
@@ -451,6 +509,18 @@ async function initAuth(){
   }
 }
 
+// Quando o usuário clica no link de "redefinir senha" recebido por e-mail,
+// o Supabase dispara este evento e já autentica temporariamente a sessão.
+sb.auth.onAuthStateChange((event) => {
+  if (event === 'PASSWORD_RECOVERY'){
+    appScreen.style.display = 'none';
+    loginScreen.style.display = 'flex';
+    loginView.style.display = 'none';
+    forgotView.style.display = 'none';
+    resetView.style.display = 'block';
+  }
+});
+
 loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   loginError.textContent = '';
@@ -471,6 +541,61 @@ loginForm.addEventListener('submit', async (e) => {
 
   loginBtn.disabled = false;
   loginBtn.textContent = 'Entrar';
+});
+
+document.getElementById('showForgot').addEventListener('click', () => {
+  loginView.style.display = 'none';
+  forgotView.style.display = 'block';
+  forgotError.textContent = '';
+  forgotSuccess.textContent = '';
+  document.getElementById('forgotEmail').value = document.getElementById('loginEmail').value;
+});
+
+document.getElementById('backToLogin').addEventListener('click', showLoginView);
+
+forgotForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  forgotError.textContent = '';
+  forgotSuccess.textContent = '';
+  forgotBtn.disabled = true;
+  forgotBtn.textContent = 'Enviando…';
+
+  const email = document.getElementById('forgotEmail').value.trim();
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname
+  });
+
+  if (error){
+    forgotError.textContent = 'Não foi possível enviar o link. Tente novamente em instantes.';
+  } else {
+    forgotSuccess.textContent = 'Link enviado! Verifique seu e-mail (e a caixa de spam) e clique no link para criar uma nova senha.';
+  }
+
+  forgotBtn.disabled = false;
+  forgotBtn.textContent = 'Enviar link';
+});
+
+resetForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  resetError.textContent = '';
+  resetSuccess.textContent = '';
+  resetBtn.disabled = true;
+  resetBtn.textContent = 'Salvando…';
+
+  const newPassword = document.getElementById('resetPassword').value;
+  const { error } = await sb.auth.updateUser({ password: newPassword });
+
+  if (error){
+    resetError.textContent = 'Não foi possível salvar a nova senha. Tente novamente.';
+    resetBtn.disabled = false;
+    resetBtn.textContent = 'Salvar nova senha';
+  } else {
+    resetSuccess.textContent = 'Senha alterada com sucesso! Você já pode entrar com ela.';
+    setTimeout(async () => {
+      await sb.auth.signOut();
+      showLogin();
+    }, 2000);
+  }
 });
 
 document.getElementById('logoutBtn').addEventListener('click', async () => {
