@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0F2A3D">
-<title>Orçamento de Lotes</title>
+<title>Orçamento de Lotes (DEV)</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -232,6 +232,13 @@
     margin-top:14px;font-size:9.5px;color:var(--muted);opacity:.5;
     letter-spacing:.03em;
   }
+  .dev-badge{
+    position:fixed;top:8px;left:8px;z-index:999;
+    background:var(--amber);color:var(--navy-deep);
+    font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:700;
+    padding:2px 7px;border-radius:5px;letter-spacing:.06em;
+    opacity:.85;pointer-events:none;
+  }
   .broker{
     text-align:center;font-size:12.5px;color:var(--paper);
     margin-top:18px;padding-top:14px;border-top:1px solid var(--line);
@@ -253,10 +260,68 @@
   button.pdf:active{transform:scale(.99);}
   button.pdf svg{width:16px;height:16px;}
   button.pdf[disabled]{opacity:.6;}
+
+  .login-wrap{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    padding:20px 16px;
+  }
+  .login-card{
+    background:var(--paper);color:var(--ink);
+    border-radius:var(--radius);padding:32px 26px;
+    max-width:360px;width:100%;
+    box-shadow:0 20px 50px rgba(0,0,0,.35);
+    text-align:center;
+  }
+  .login-title{
+    font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;
+    margin:0 0 4px;color:var(--navy);
+  }
+  .login-sub{font-size:13px;color:#5A6E7E;margin-bottom:22px;}
+  .login-card label{
+    display:block;text-align:left;font-size:11px;font-weight:600;color:#5A6E7E;
+    text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;
+  }
+  .login-card input{
+    width:100%;font-family:'Inter',sans-serif;font-size:15px;
+    padding:11px 12px;border-radius:9px;border:1.5px solid #D8D2C2;
+    background:#fff;color:var(--ink);
+  }
+  .login-card input:focus{outline:none;border-color:var(--amber-deep);}
+  .login-error{
+    margin-top:12px;font-size:12.5px;color:#C0392B;min-height:1px;
+  }
+  .logout-btn{
+    position:absolute;top:20px;right:16px;
+    background:rgba(255,255,255,0.06);border:1px solid var(--line);
+    color:var(--paper);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;
+    padding:7px 14px;border-radius:8px;cursor:pointer;
+  }
+  #appScreen{position:relative;}
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<div class="dev-badge">DEV</div>
+
+<div id="loginScreen" class="login-wrap">
+  <div class="login-card">
+    <div class="brand-logo" style="margin:0 auto 18px;"><img src="logo.png" alt="Militão Imóveis"></div>
+    <h1 class="login-title">Orçamento de Lotes</h1>
+    <div class="login-sub">Acesso restrito — entre com seu e-mail e senha.</div>
+    <form id="loginForm">
+      <label for="loginEmail">E-mail</label>
+      <input type="email" id="loginEmail" autocomplete="username" required>
+      <label for="loginPassword" style="margin-top:12px;">Senha</label>
+      <input type="password" id="loginPassword" autocomplete="current-password" required>
+      <button type="submit" class="go" id="loginBtn" style="margin-top:18px;">Entrar</button>
+      <div class="login-error" id="loginError"></div>
+    </form>
+  </div>
+</div>
+
+<div class="wrap" id="appScreen" style="display:none;">
+
+  <button class="logout-btn" id="logoutBtn" title="Sair">Sair</button>
 
   <header>
     <div class="brand-logo"><img src="logo.png" alt="Militão Imóveis"></div>
@@ -332,9 +397,89 @@
 
   <footer>
     Base: aba "Tabela" &middot; <span id="rowcount"></span> lotes carregados
-    <div class="version-tag">v2.0 · 2026-08-31</div>
+    <div class="version-tag">v2.2 · 2026-08-31</div>
   </footer>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+// ====== CONFIGURAÇÃO DO SUPABASE (login e controle de validade) ======
+const SUPABASE_URL = 'https://xuodxpjobozczokvhgvx.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh1b2R4cGpvYm96Y3pva3ZoZ3Z4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxODIwNjEsImV4cCI6MjEwMzc1ODA2MX0.gJWNTKSX8Yx5_L5cb9r0x6A5FlTeWyNQfKdQGAverU4';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const loginScreen = document.getElementById('loginScreen');
+const appScreen = document.getElementById('appScreen');
+const loginForm = document.getElementById('loginForm');
+const loginError = document.getElementById('loginError');
+const loginBtn = document.getElementById('loginBtn');
+
+function showLogin(message){
+  appScreen.style.display = 'none';
+  loginScreen.style.display = 'flex';
+  loginError.textContent = message || '';
+}
+
+function showApp(){
+  loginScreen.style.display = 'none';
+  appScreen.style.display = 'block';
+}
+
+async function checkAccess(user){
+  const { data: profile, error } = await sb
+    .from('profiles')
+    .select('expires_at, active')
+    .eq('id', user.id)
+    .single();
+
+  const today = new Date().toISOString().slice(0, 10);
+  if (error || !profile || !profile.active || profile.expires_at < today){
+    await sb.auth.signOut();
+    showLogin('Seu acesso expirou ou está inativo. Fale com o administrador.');
+    return false;
+  }
+  return true;
+}
+
+async function initAuth(){
+  const { data: { session } } = await sb.auth.getSession();
+  if (session && session.user){
+    const ok = await checkAccess(session.user);
+    if (ok) showApp();
+  } else {
+    showLogin();
+  }
+}
+
+loginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  loginError.textContent = '';
+  loginBtn.disabled = true;
+  loginBtn.textContent = 'Entrando…';
+
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+  if (error){
+    loginError.textContent = 'E-mail ou senha inválidos.';
+  } else {
+    const ok = await checkAccess(data.user);
+    if (ok) showApp();
+  }
+
+  loginBtn.disabled = false;
+  loginBtn.textContent = 'Entrar';
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await sb.auth.signOut();
+  showLogin();
+});
+
+initAuth();
+</script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="logo-base64.js"></script>

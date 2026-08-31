@@ -61,18 +61,13 @@ Se a planilha for atualizada (novos lotes, novos valores), é só gerar o
 
 ---
 
-## 2. Marca e corretora
+## 2. Marca
 
-- **Logo:** a marca "Militão Imóveis" aparece no topo do app e no PDF gerado
-  (arquivo `logo.png`).
-- **Corretora:** os dados abaixo aparecem em todo orçamento calculado (no
-  card de resultado, no rodapé do app e no PDF):
-  - **Elizete Aurélio — Creci 25456**
-  - **WhatsApp: (85) 99673-7694**
+- **Logo:** a marca "Militão Imóveis" aparece no topo do app e no PDF
+  gerado (arquivo `logo.png`).
 
-Para trocar a logo ou os dados da corretora depois, é só substituir o
-arquivo `logo.png` (mesma proporção) ou pedir a atualização do texto no
-`index.html`.
+Para trocar a logo depois, é só substituir o arquivo `logo.png` (mesma
+proporção).
 
 ---
 
@@ -82,8 +77,8 @@ Depois de calcular o orçamento, aparece o botão **"Baixar em PDF"** dentro
 do card de resultado. Ele gera o arquivo **diretamente** (não abre a tela
 de impressão do navegador): toque no botão e o PDF já cai na pasta
 Downloads do celular, pronto para compartilhar no WhatsApp com o cliente —
-sempre em **uma única página**, com logo, dados do lote, valores do plano
-escolhido e o contato da corretora.
+sempre em **uma única página**, com logo, dados do lote e valores do plano
+escolhido.
 
 ---
 
@@ -217,7 +212,77 @@ lista usado em `data.js`.
 
 ---
 
-## 8. Perguntas frequentes
+## 8. Login e controle de validade de acesso
+
+O app agora exige e-mail e senha para entrar. Isso é feito com o
+**Supabase** (banco de dados + autenticação gratuitos), configurado em
+`supabase-setup.sql` e conectado no `index.html`.
+
+### Como funciona
+
+- Quem abre o app vê a tela de login primeiro. Sem login válido, não
+  acessa a consulta de lotes.
+- Cada usuário tem uma **data de validade** (`expires_at`) guardada no
+  banco. A cada abertura do app (e a cada login), o sistema confere se
+  essa data ainda não passou e se o usuário está marcado como `active`.
+  Se estiver vencido ou inativo, ele é desconectado automaticamente e vê
+  a mensagem "Seu acesso expirou ou está inativo."
+- Por isso, diferente do resto do app, **o login sempre precisa de
+  internet** — é essa verificação online que permite revogar o acesso de
+  alguém a qualquer momento, sem precisar atualizar o app.
+- Tem um botão **"Sair"** no canto superior direito da tela principal.
+
+### Como cadastrar um novo usuário e definir a validade
+
+Por enquanto isso é feito direto no painel do Supabase (gratuito, leva
+menos de 1 minuto por pessoa):
+
+1. No painel do projeto, vá em **Authentication → Users → Add user →
+   Create new user**.
+2. Preencha e-mail e senha, e marque **"Auto Confirm User"** (sem isso o
+   login não funciona, pois fica esperando confirmação por e-mail que
+   nunca chega).
+3. Copie o **UUID** desse usuário, que aparece na lista.
+4. Vá em **Table Editor → profiles → Insert row**.
+5. Cole o UUID no campo `id`, preencha `email`, escolha a data de
+   validade em `expires_at`, e deixe `active` marcado como `true`.
+
+Para **renovar** o acesso de alguém, basta editar a data em `expires_at`
+na mesma tabela. Para **bloquear** alguém antes do vencimento, marque
+`active` como `false`.
+
+### Configuração inicial (uma vez só)
+
+1. Crie um projeto gratuito em [supabase.com](https://supabase.com).
+2. No **SQL Editor**, rode o conteúdo do arquivo `supabase-setup.sql`
+   (cria a tabela `profiles` com as regras de segurança).
+3. Em **Project Settings → API**, copie a **Project URL** e a chave
+   **anon public**.
+4. Abra o `index.html`, procure por `SUPABASE_URL` e
+   `SUPABASE_ANON_KEY` (bem no topo do bloco de scripts) e cole os dois
+   valores no lugar de `'COLE_AQUI_A_URL_DO_SEU_PROJETO'` e
+   `'COLE_AQUI_A_CHAVE_ANON_PUBLICA'`.
+
+> A chave "anon public" é feita para ficar exposta no código do site —
+> ela sozinha não dá acesso a nada; quem protege os dados é a regra de
+> segurança (RLS) criada pelo `supabase-setup.sql`, que só deixa cada
+> usuário enxergar o próprio registro de validade.
+
+### Limitação atual (importante)
+
+O login protege a **tela** do app (ninguém entra sem senha válida). Mas
+os dados dos lotes continuam num arquivo estático (`data.js`) que fica
+publicado junto com o site — ou seja, tecnicamente alguém que soubesse o
+endereço exato desse arquivo poderia baixá-lo direto, sem passar pelo
+login. Isso não afeta o uso normal (ninguém vê ou acha esse link sem
+saber que ele existe), mas se no futuro for importante impedir isso por
+completo, dá para mover os dados dos lotes também para dentro do
+Supabase, protegidos pela mesma regra de segurança — é um passo a mais
+que posso fazer quando quiser.
+
+---
+
+## 9. Perguntas frequentes
 
 **Precisa de internet para usar?**
 Não, depois de instalado (Caminhos A, B ou C) o app funciona 100% offline

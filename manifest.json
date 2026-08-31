@@ -1,6 +1,6 @@
 {
-  "name": "Orçamento de Lotes",
-  "short_name": "Orçamento",
+  "name": "Orçamento de Lotes (DEV)",
+  "short_name": "Orçamento DEV",
   "description": "Consulta de quadra/lote e geração de orçamento por plano de pagamento.",
   "start_url": "./index.html",
   "scope": "./",

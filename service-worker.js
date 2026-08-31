@@ -1,6 +1,9 @@
-const CACHE = 'orcamento-lotes-v2';
+const CACHE = 'orcamento-lotes-dev-v3';
 const ASSETS = ['./', './index.html', './manifest.json', './data.js', './icon-192.png', './icon-512.png', './logo.png', './logo-base64.js'];
-const CDN_ASSETS = ['https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'];
+const CDN_ASSETS = [
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js'
+];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS).then(() =>
