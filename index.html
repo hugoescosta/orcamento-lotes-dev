@@ -436,7 +436,7 @@
 
   <footer>
     Base: aba "Tabela" &middot; <span id="rowcount"></span> lotes carregados
-    <div class="version-tag">v2.3 · 2026-08-31</div>
+    <div class="version-tag">v2.4 · 2026-08-31</div>
   </footer>
 </div>
 
@@ -483,6 +483,25 @@ function showApp(){
   appScreen.style.display = 'block';
 }
 
+function showResetView(){
+  appScreen.style.display = 'none';
+  loginScreen.style.display = 'flex';
+  loginView.style.display = 'none';
+  forgotView.style.display = 'none';
+  resetView.style.display = 'block';
+}
+
+// Detecta se esta abertura da página veio de um link de "esqueci minha senha"
+// (checando a própria URL, ANTES de decidir se mostra o app). Isso evita a
+// corrida entre o Supabase logar automaticamente e a tela de nova senha —
+// um problema conhecido do próprio Supabase (o evento de login às vezes
+// dispara antes do evento de recuperação de senha).
+function isRecoveryLink(){
+  const hash = window.location.hash || '';
+  const search = window.location.search || '';
+  return hash.includes('type=recovery') || search.includes('type=recovery') || search.includes('code=');
+}
+
 async function checkAccess(user){
   const { data: profile, error } = await sb
     .from('profiles')
@@ -500,6 +519,13 @@ async function checkAccess(user){
 }
 
 async function initAuth(){
+  if (isRecoveryLink()){
+    showResetView();
+    // Limpa a URL um pouco depois (dá tempo do Supabase processar o link em
+    // segundo plano) para evitar reprocessar o mesmo link num refresh.
+    setTimeout(() => history.replaceState(null, '', window.location.pathname), 2000);
+    return;
+  }
   const { data: { session } } = await sb.auth.getSession();
   if (session && session.user){
     const ok = await checkAccess(session.user);
@@ -509,15 +535,11 @@ async function initAuth(){
   }
 }
 
-// Quando o usuário clica no link de "redefinir senha" recebido por e-mail,
-// o Supabase dispara este evento e já autentica temporariamente a sessão.
+// Rede de segurança: se por algum motivo o evento chegar depois, ainda assim
+// força a tela de nova senha (evita ficar preso na tela do app).
 sb.auth.onAuthStateChange((event) => {
   if (event === 'PASSWORD_RECOVERY'){
-    appScreen.style.display = 'none';
-    loginScreen.style.display = 'flex';
-    loginView.style.display = 'none';
-    forgotView.style.display = 'none';
-    resetView.style.display = 'block';
+    showResetView();
   }
 });
 
