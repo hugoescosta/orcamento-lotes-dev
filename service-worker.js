@@ -1,5 +1,5 @@
-const CACHE = 'orcamento-lotes-dev-v3';
-const ASSETS = ['./', './index.html', './manifest.json', './data.js', './icon-192.png', './icon-512.png', './logo.png', './logo-base64.js'];
+const CACHE = 'orcamento-lotes-v4';
+const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './logo.png', './logo-base64.js'];
 const CDN_ASSETS = [
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js'
@@ -20,6 +20,14 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  // Nunca cachear chamadas ao Supabase (login, dados de produtos/lotes) —
+  // elas precisam sempre vir frescas do servidor, senão trocas de acesso
+  // ou de produto ficariam presas em uma versão antiga guardada no celular.
+  if (e.request.url.includes('.supabase.co/')){
+    e.respondWith(fetch(e.request));
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
       const copy = res.clone();

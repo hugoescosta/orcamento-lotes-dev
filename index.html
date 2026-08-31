@@ -290,13 +290,29 @@
     color:#5A6E7E;font-family:'Inter',sans-serif;font-size:12.5px;
     text-decoration:underline;cursor:pointer;padding:4px;
   }
-  .logout-btn{
-    position:absolute;top:20px;right:16px;
+  .header-actions{
+    position:absolute;top:20px;right:16px;display:flex;gap:8px;
+  }
+  .header-actions button{
     background:rgba(255,255,255,0.06);border:1px solid var(--line);
     color:var(--paper);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;
     padding:7px 14px;border-radius:8px;cursor:pointer;
   }
   #appScreen{position:relative;}
+
+  .product-picker-list{display:flex;flex-direction:column;gap:10px;margin-top:18px;}
+  .product-picker-btn{
+    padding:14px;border-radius:10px;border:1.5px solid #D8D2C2;background:#fff;
+    color:var(--navy);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;
+    cursor:pointer;text-align:center;
+  }
+  .product-picker-btn:hover{border-color:var(--amber-deep);}
+  .spinner{
+    width:36px;height:36px;margin:0 auto;
+    border:3px solid #D8D2C2;border-top-color:var(--amber);border-radius:50%;
+    animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
 </style>
 </head>
 <body>
@@ -349,14 +365,33 @@
   </div>
 </div>
 
+<div id="productPickerScreen" class="login-wrap" style="display:none;">
+  <div class="login-card">
+    <div class="brand-logo" style="margin:0 auto 18px;"><img src="logo.png" alt="Militão Imóveis"></div>
+    <h1 class="login-title">Escolha o produto</h1>
+    <div class="login-sub">Você tem acesso a mais de um produto. Qual deseja consultar agora?</div>
+    <div id="productPickerList" class="product-picker-list"></div>
+  </div>
+</div>
+
+<div id="loadingScreen" class="login-wrap" style="display:none;">
+  <div class="login-card" style="text-align:center;">
+    <div class="spinner"></div>
+    <div class="login-sub" style="margin-top:14px;">Carregando dados do produto…</div>
+  </div>
+</div>
+
 <div class="wrap" id="appScreen" style="display:none;">
 
-  <button class="logout-btn" id="logoutBtn" title="Sair">Sair</button>
+  <div class="header-actions">
+    <button id="switchProductBtn" title="Trocar produto" style="display:none;">Trocar produto</button>
+    <button class="logout-btn" id="logoutBtn" title="Sair">Sair</button>
+  </div>
 
   <header>
     <div class="brand-logo"><img src="logo.png" alt="Militão Imóveis"></div>
     <div class="header-text">
-      <div class="eyebrow">Consulta &amp; Orçamento</div>
+      <div class="eyebrow">Consulta &amp; Orçamento <span id="currentProductLabel"></span></div>
       <h1>Orçamento de Lotes</h1>
       <div class="sub">Informe quadra e lote para localizar o imóvel na base e montar a proposta.</div>
     </div>
@@ -429,7 +464,7 @@
       <div class="broker-footer-name" id="brokerFooterName"></div>
       <div class="broker-footer-contact" id="brokerFooterContact"></div>
     </div>
-    <div class="version-tag">v3.4 · 2026-08-31</div>
+    <div class="version-tag">v4.0 · 2026-08-31</div>
   </footer>
 </div>
 
@@ -442,6 +477,8 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const loginScreen = document.getElementById('loginScreen');
 const appScreen = document.getElementById('appScreen');
+const productPickerScreen = document.getElementById('productPickerScreen');
+const loadingScreen = document.getElementById('loadingScreen');
 const loginView = document.getElementById('loginView');
 const forgotView = document.getElementById('forgotView');
 const resetView = document.getElementById('resetView');
@@ -457,6 +494,16 @@ const resetError = document.getElementById('resetError');
 const resetSuccess = document.getElementById('resetSuccess');
 const resetBtn = document.getElementById('resetBtn');
 
+let userProducts = [];
+let currentProductId = null;
+
+function hideAllScreens(){
+  loginScreen.style.display = 'none';
+  productPickerScreen.style.display = 'none';
+  loadingScreen.style.display = 'none';
+  appScreen.style.display = 'none';
+}
+
 function showLoginView(){
   loginView.style.display = 'block';
   forgotView.style.display = 'none';
@@ -465,19 +512,89 @@ function showLoginView(){
 }
 
 function showLogin(message){
-  appScreen.style.display = 'none';
+  hideAllScreens();
   loginScreen.style.display = 'flex';
   showLoginView();
   loginError.textContent = message || '';
 }
 
 function showApp(){
-  loginScreen.style.display = 'none';
+  hideAllScreens();
   appScreen.style.display = 'block';
 }
 
+function showLoading(){
+  hideAllScreens();
+  loadingScreen.style.display = 'flex';
+}
+
+async function loadUserProducts(userId){
+  const { data, error } = await sb
+    .from('user_products')
+    .select('products(id, slug, name)')
+    .eq('user_id', userId);
+  if (error || !data) return [];
+  return data.map(r => r.products).filter(Boolean);
+}
+
+function showProductPicker(products){
+  hideAllScreens();
+  const list = document.getElementById('productPickerList');
+  list.innerHTML = '';
+  products.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'product-picker-btn';
+    btn.textContent = p.name;
+    btn.addEventListener('click', () => selectProduct(p));
+    list.appendChild(btn);
+  });
+  productPickerScreen.style.display = 'flex';
+}
+
+async function selectProduct(product){
+  currentProductId = product.id;
+  showLoading();
+  const ok = await loadLotesForProduct(product.id);
+  if (!ok){
+    showLogin('Não foi possível carregar os dados desse produto. Tente novamente.');
+    return;
+  }
+  document.getElementById('currentProductLabel').textContent = '— ' + product.name;
+  document.getElementById('switchProductBtn').style.display = userProducts.length > 1 ? 'inline-block' : 'none';
+  showApp();
+}
+
+async function afterLogin(user){
+  showLoading();
+  userProducts = await loadUserProducts(user.id);
+
+  if (userProducts.length === 0){
+    await sb.auth.signOut();
+    showLogin('Você não tem nenhum produto liberado. Fale com o administrador.');
+    return;
+  }
+
+  if (userProducts.length === 1){
+    await selectProduct(userProducts[0]);
+  } else {
+    showProductPicker(userProducts);
+  }
+}
+
+document.getElementById('switchProductBtn').addEventListener('click', async () => {
+  showLoading();
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session || !session.user){ showLogin(); return; }
+  userProducts = await loadUserProducts(session.user.id);
+  if (userProducts.length <= 1){
+    showApp();
+    return;
+  }
+  showProductPicker(userProducts);
+});
+
 function showResetView(){
-  appScreen.style.display = 'none';
+  hideAllScreens();
   loginScreen.style.display = 'flex';
   loginView.style.display = 'none';
   forgotView.style.display = 'none';
@@ -542,7 +659,7 @@ async function initAuth(){
   const { data: { session } } = await sb.auth.getSession();
   if (session && session.user){
     const ok = await checkAccess(session.user);
-    if (ok) showApp();
+    if (ok) await afterLogin(session.user);
   } else {
     showLogin();
   }
@@ -571,7 +688,7 @@ loginForm.addEventListener('submit', async (e) => {
     loginError.textContent = 'E-mail ou senha inválidos.';
   } else {
     const ok = await checkAccess(data.user);
-    if (ok) showApp();
+    if (ok) await afterLogin(data.user);
   }
 
   loginBtn.disabled = false;
@@ -641,6 +758,8 @@ resetForm.addEventListener('submit', async (e) => {
 document.getElementById('logoutBtn').addEventListener('click', async () => {
   await sb.auth.signOut();
   currentProfile = null;
+  userProducts = [];
+  currentProductId = null;
   document.getElementById('brokerFooter').style.display = 'none';
   showLogin();
 });
@@ -650,14 +769,36 @@ initAuth();
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="logo-base64.js"></script>
-<script src="data.js"></script>
 <script>
-// LOTES_DATA columns: [quadra, lote, area, valor, entrada, avista1x, parcela12x, parcela24x, parcela36x, semBalao144x, balaoAnual, comBalao144x, semEntrada144x]
+// Colunas de cada linha de lote: [quadra, lote, area, valor, entrada, avista1x, parcela12x, parcela24x, parcela36x, semBalao144x, balaoAnual, comBalao144x, semEntrada144x]
 const IDX = {quadra:0, lote:1, area:2, valor:3, entrada:4, avista:5, p12:6, p24:7, p36:8, semBalao:9, balaoAnual:10, comBalao:11, semEntrada:12};
 
+let LOTES_DATA = [];
 const byCode = new Map();
-LOTES_DATA.forEach(row => byCode.set(row[IDX.quadra] + '-' + row[IDX.lote], row));
-document.getElementById('rowcount').textContent = LOTES_DATA.length;
+
+// Busca os lotes do produto selecionado direto do banco (Supabase), em vez
+// de um arquivo estático — assim cada usuário só enxerga os dados dos
+// produtos que tiver sido liberado (protegido por regra de segurança no banco).
+async function loadLotesForProduct(productId){
+  const { data, error } = await sb
+    .from('lotes')
+    .select('quadra,lote,area,valor,entrada,avista,p12,p24,p36,sem_balao,balao_anual,com_balao,sem_entrada')
+    .eq('product_id', productId);
+
+  if (error || !data){
+    console.error('Erro ao carregar lotes:', error);
+    return false;
+  }
+
+  LOTES_DATA = data.map(r => [
+    r.quadra, r.lote, r.area, r.valor, r.entrada, r.avista,
+    r.p12, r.p24, r.p36, r.sem_balao, r.balao_anual, r.com_balao, r.sem_entrada
+  ]);
+  byCode.clear();
+  LOTES_DATA.forEach(row => byCode.set(row[IDX.quadra] + '-' + row[IDX.lote], row));
+  document.getElementById('rowcount').textContent = LOTES_DATA.length;
+  return true;
+}
 
 const FORMAS_COM_CONDICAO = new Set(['p144']); // formas que hoje têm dados por condição (Sem Balão/Com Balão/Sem Entrada)
 
