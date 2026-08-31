@@ -439,7 +439,7 @@
 
   <footer>
     Base: aba "Tabela" &middot; <span id="rowcount"></span> lotes carregados
-    <div class="version-tag">v3.1 · 2026-08-31</div>
+    <div class="version-tag">v3.2 · 2026-08-31</div>
   </footer>
 </div>
 
@@ -867,9 +867,13 @@ document.getElementById('go').addEventListener('click', () => {
     const {n, idx, desc} = map[currentForma];
     const parcela = row[idx];
     const parcelaDesc = parcela * (1-desconto);
+    const facilitada = entradaDesc / (divisor + 1);
     addArea();
     addSpec('Valor Total', valor, valorDesc);
     addSpec('Entrada', entrada, entradaDesc);
+    if (divisor > 0 && Math.round(facilitada * 100) !== 0){
+      addSpec(`Facilitada em 1 + ${divisor}`, facilitada);
+    }
     addSpec(`Parcela (${n}x)`, parcela, parcelaDesc);
     setLabelNote(`${n}x`,
       desc > 0
