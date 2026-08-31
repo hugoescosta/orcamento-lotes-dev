@@ -235,6 +235,12 @@
     margin-top:14px;font-size:9.5px;color:var(--muted);opacity:.5;
     letter-spacing:.03em;
   }
+  .broker-footer{
+    margin-top:16px;padding-top:14px;border-top:1px solid var(--line);
+    text-align:center;
+  }
+  .broker-footer-name{font-size:12.5px;font-weight:600;color:var(--paper);}
+  .broker-footer-contact{font-size:11.5px;color:var(--amber);margin-top:2px;font-family:'IBM Plex Mono',monospace;}
   .broker{
     text-align:center;font-size:12.5px;color:var(--paper);
     margin-top:18px;padding-top:14px;border-top:1px solid var(--line);
@@ -439,7 +445,11 @@
 
   <footer>
     Base: aba "Tabela" &middot; <span id="rowcount"></span> lotes carregados
-    <div class="version-tag">v3.2 · 2026-08-31</div>
+    <div class="broker-footer" id="brokerFooter" style="display:none;">
+      <div class="broker-footer-name" id="brokerFooterName"></div>
+      <div class="broker-footer-contact" id="brokerFooterContact"></div>
+    </div>
+    <div class="version-tag">v3.3 · 2026-08-31</div>
   </footer>
 </div>
 
@@ -505,20 +515,40 @@ function isRecoveryLink(){
   return hash.includes('type=recovery') || search.includes('type=recovery') || search.includes('code=');
 }
 
+let currentProfile = null;
+
 async function checkAccess(user){
   const { data: profile, error } = await sb
     .from('profiles')
-    .select('expires_at, active')
+    .select('expires_at, active, display_name, whatsapp, creci')
     .eq('id', user.id)
     .single();
 
   const today = new Date().toISOString().slice(0, 10);
   if (error || !profile || !profile.active || profile.expires_at < today){
     await sb.auth.signOut();
+    currentProfile = null;
     showLogin('Seu acesso expirou ou está inativo. Fale com o administrador.');
     return false;
   }
+  currentProfile = profile;
+  renderBrokerInfo();
   return true;
+}
+
+function renderBrokerInfo(){
+  const wrap = document.getElementById('brokerFooter');
+  const nameEl = document.getElementById('brokerFooterName');
+  const contactEl = document.getElementById('brokerFooterContact');
+  if (!currentProfile || !currentProfile.display_name){
+    wrap.style.display = 'none';
+    return;
+  }
+  let nameLine = currentProfile.display_name;
+  if (currentProfile.creci) nameLine += ' — Creci ' + currentProfile.creci;
+  nameEl.textContent = nameLine;
+  contactEl.textContent = currentProfile.whatsapp ? 'WhatsApp: ' + currentProfile.whatsapp : '';
+  wrap.style.display = 'block';
 }
 
 async function initAuth(){
@@ -630,6 +660,8 @@ resetForm.addEventListener('submit', async (e) => {
 
 document.getElementById('logoutBtn').addEventListener('click', async () => {
   await sb.auth.signOut();
+  currentProfile = null;
+  document.getElementById('brokerFooter').style.display = 'none';
   showLogin();
 });
 
@@ -1020,6 +1052,24 @@ function generatePdf(){
     doc.setLineWidth(0.2);
     doc.line(marginX, y, pageW - marginX, y);
     y += 7;
+
+    if (currentProfile && currentProfile.display_name){
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(10.5);
+      doc.setTextColor(...ink);
+      let nameLine = currentProfile.display_name;
+      if (currentProfile.creci) nameLine += ' — Creci ' + currentProfile.creci;
+      doc.text(nameLine, marginX, y);
+      y += 5.5;
+      if (currentProfile.whatsapp){
+        doc.setFont('helvetica','normal');
+        doc.setFontSize(10);
+        doc.setTextColor(...muted);
+        doc.text('WhatsApp: ' + currentProfile.whatsapp, marginX, y);
+        y += 5.5;
+      }
+      y += 2;
+    }
 
     doc.setFont('helvetica','normal');
     doc.setFontSize(8.5);
