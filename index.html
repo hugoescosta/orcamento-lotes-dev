@@ -463,7 +463,7 @@
       <div class="broker-footer-name" id="brokerFooterName"></div>
       <div class="broker-footer-contact" id="brokerFooterContact"></div>
     </div>
-    <div class="version-tag">v4.3 · 2026-09-01</div>
+    <div class="version-tag">v4.4 · 2026-09-01</div>
   </footer>
 </div>
 
@@ -560,6 +560,7 @@ async function selectProduct(product){
   }
   document.getElementById('currentProductLabel').textContent = '— ' + product.name;
   document.getElementById('switchProductBtn').style.display = userProducts.length > 1 ? 'inline-block' : 'none';
+  await logEvent('product_selected', { produto: product.name, slug: product.slug });
   showApp();
 }
 
@@ -568,6 +569,7 @@ async function afterLogin(user){
   userProducts = await loadUserProducts(user.id);
 
   if (userProducts.length === 0){
+    await logEvent('access_denied', { motivo: 'sem_produtos_liberados' });
     await sb.auth.signOut();
     showLogin('Você não tem nenhum produto liberado. Fale com o administrador.');
     return;
@@ -615,6 +617,8 @@ function isRecoveryLink(){
 }
 
 let currentProfile = null;
+let currentUserId = null;
+let currentUserEmail = null;
 let resetContext = 'recovery'; // 'recovery' (esqueci minha senha) ou 'forced' (troca obrigatória no 1º login)
 
 // Identificador único deste navegador/aparelho, gerado uma vez e guardado
@@ -628,7 +632,26 @@ function getDeviceId(){
   return id;
 }
 
+// Registra um evento de uso (login, busca de lote, PDF gerado, etc) na
+// tabela "logs". Sempre "melhor esforço": nunca trava nem quebra o app se
+// a gravação falhar (ex: sem internet no instante do evento).
+async function logEvent(eventType, details){
+  try {
+    await sb.from('logs').insert({
+      user_id: currentUserId,
+      user_email: currentUserEmail,
+      event_type: eventType,
+      product_id: currentProductId || null,
+      device_id: getDeviceId(),
+      details: details || null
+    });
+  } catch (e) { /* log é melhor-esforço — nunca interrompe o app */ }
+}
+
 async function checkAccess(user){
+  currentUserId = user.id;
+  currentUserEmail = user.email;
+
   const { data: profile, error } = await sb
     .from('profiles')
     .select('expires_at, active, display_name, whatsapp, creci, must_change_password, active_device_id')
@@ -637,6 +660,7 @@ async function checkAccess(user){
 
   const today = new Date().toISOString().slice(0, 10);
   if (error || !profile || !profile.active || profile.expires_at < today){
+    await logEvent('access_denied', { motivo: !profile ? 'perfil_nao_encontrado' : (!profile.active ? 'inativo' : 'expirado'), expires_at: profile ? profile.expires_at : null });
     await sb.auth.signOut();
     currentProfile = null;
     showLogin('Seu acesso expirou ou está inativo. Fale com o administrador.');
@@ -660,11 +684,13 @@ async function enforceSingleDevice(claim){
     if (registered !== myDeviceId){
       try { await sb.rpc('register_device', { device_id: myDeviceId }); } catch (e) { /* segue mesmo assim */ }
       if (currentProfile) currentProfile.active_device_id = myDeviceId;
+      if (registered) await logEvent('device_takeover', { dispositivo_anterior: registered, dispositivo_novo: myDeviceId });
     }
     return true;
   }
 
   if (registered !== myDeviceId){
+    await logEvent('device_kicked', { dispositivo_que_assumiu: registered });
     await sb.auth.signOut();
     currentProfile = null;
     showLogin('Sua conta foi acessada em outro dispositivo. Faça login novamente para continuar usando este aparelho.');
@@ -685,6 +711,7 @@ async function periodicDeviceCheck(){
     .eq('id', session.user.id)
     .single();
   if (data && data.active_device_id && data.active_device_id !== getDeviceId()){
+    await logEvent('device_kicked', { dispositivo_que_assumiu: data.active_device_id, contexto: 'checagem_periodica' });
     await sb.auth.signOut();
     currentProfile = null;
     showLogin('Sua conta foi acessada em outro dispositivo. Faça login novamente para continuar usando este aparelho.');
@@ -757,10 +784,14 @@ loginForm.addEventListener('submit', async (e) => {
 
   if (error){
     loginError.textContent = 'E-mail ou senha inválidos.';
+    currentUserEmail = email;
+    await logEvent('login_failed', { email });
+    currentUserEmail = null;
   } else {
     const ok = await checkAccess(data.user);
     if (ok){
       await enforceSingleDevice(true);
+      await logEvent('login_success', {});
       await proceedAfterAccess(data.user);
     }
   }
@@ -823,6 +854,10 @@ resetForm.addEventListener('submit', async (e) => {
     return;
   }
 
+  currentUserId = data.user.id;
+  currentUserEmail = data.user.email;
+  await logEvent('password_changed', { contexto: resetContext });
+
   if (resetContext === 'forced'){
     // Troca obrigatória do 1º login: limpa a flag e já segue pro app,
     // sem precisar deslogar e logar de novo.
@@ -843,10 +878,13 @@ resetForm.addEventListener('submit', async (e) => {
 });
 
 document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await logEvent('logout', {});
   await sb.auth.signOut();
   currentProfile = null;
   userProducts = [];
   currentProductId = null;
+  currentUserId = null;
+  currentUserEmail = null;
   document.getElementById('brokerFooter').style.display = 'none';
   showLogin();
 });
@@ -1040,11 +1078,13 @@ document.getElementById('go').addEventListener('click', () => {
     emptyState.innerHTML = `<div class="warn">Nenhum lote encontrado para Quadra ${q} / Lote ${l}. Confira o código na base.</div>`;
     resultCard.style.display='none';
     emptyState.style.display='block';
+    logEvent('lot_search', { quadra: q, lote: l, forma: currentForma, condicao: currentCondicao, encontrado: false });
     return;
   }
 
   emptyState.style.display='none';
   resultCard.style.display='block';
+  logEvent('lot_search', { quadra: q, lote: l, forma: currentForma, condicao: currentCondicao, desconto: Math.round(desconto*100), encontrado: true });
 
   const codeText = `QUADRA ${row[IDX.quadra]} · LOTE ${row[IDX.lote]} · CÓD. ${row[IDX.quadra]}${row[IDX.lote]}`;
   document.getElementById('codeTag').textContent = codeText;
@@ -1274,6 +1314,7 @@ function generatePdf(){
       ? `orcamento-quadra${codeSlug[1]}-lote${codeSlug[2]}.pdf`
       : 'orcamento-lote.pdf';
     doc.save(filename);
+    logEvent('pdf_generated', { arquivo: filename, plano: lastResult.planLabel, codigo: lastResult.code });
   } catch (err) {
     alert('Não foi possível gerar o PDF agora. Verifique sua conexão com a internet (necessária apenas na primeira vez que o app é aberto) e tente novamente.');
   } finally {
