@@ -1,4 +1,4 @@
-const CACHE = 'orcamento-lotes-v4';
+const CACHE = 'orcamento-lotes-dev-v5';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './logo.png', './logo-base64.js'];
 const CDN_ASSETS = [
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -28,6 +28,24 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  // A própria página (index.html / navegação): sempre tenta buscar a
+  // versão mais nova da internet primeiro. Só usa a cópia guardada se
+  // estiver offline. Isso garante que o app nunca fica "preso" numa
+  // versão antiga — sem precisar que o usuário limpe o cache manualmente.
+  const isDocument = e.request.mode === 'navigate' || e.request.destination === 'document';
+  if (isDocument){
+    e.respondWith(
+      fetch(e.request).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy));
+        return res;
+      }).catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // Demais arquivos (ícones, logo, bibliotecas): cache primeiro, como
+  // antes — eles mudam raramente e isso deixa o app rápido/offline-friendly.
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
       const copy = res.clone();
