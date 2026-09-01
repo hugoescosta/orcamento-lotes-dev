@@ -367,7 +367,7 @@
 
 <div id="productPickerScreen" class="login-wrap" style="display:none;">
   <div class="login-card">
-    <div class="brand-logo" style="margin:0 auto 18px;"><img src="logo.png" alt="Militão Imóveis"></div>
+    <div class="brand-logo" style="margin:0 auto 18px;"><img id="productPickerLogo" src="logo.png" alt="Logo"></div>
     <h1 class="login-title">Escolha o produto</h1>
     <div class="login-sub">Você tem acesso a mais de um produto. Qual deseja consultar agora?</div>
     <div id="productPickerList" class="product-picker-list"></div>
@@ -384,7 +384,7 @@
 <div class="wrap" id="appScreen" style="display:none;">
 
   <header>
-    <div class="brand-logo"><img src="logo.png" alt="Militão Imóveis"></div>
+    <div class="brand-logo"><img id="appHeaderLogo" src="logo.png" alt="Logo"></div>
     <div class="header-text">
       <div class="eyebrow">Consulta &amp; Orçamento <span id="currentProductLabel"></span></div>
       <h1>Orçamento de Lotes</h1>
@@ -463,7 +463,7 @@
       <div class="broker-footer-name" id="brokerFooterName"></div>
       <div class="broker-footer-contact" id="brokerFooterContact"></div>
     </div>
-    <div class="version-tag">v4.8 · 2026-09-01</div>
+    <div class="version-tag">v4.9 · 2026-09-01</div>
   </footer>
 </div>
 
@@ -663,7 +663,7 @@ async function checkAccess(user){
 
   const { data: profile, error } = await sb
     .from('profiles')
-    .select('expires_at, active, display_name, whatsapp, creci, must_change_password, active_device_id')
+    .select('expires_at, active, display_name, whatsapp, creci, must_change_password, active_device_id, agencies(name, logo_base64)')
     .eq('id', user.id)
     .single();
 
@@ -677,6 +677,7 @@ async function checkAccess(user){
   }
   currentProfile = profile;
   renderBrokerInfo();
+  applyAgencyLogo();
   return true;
 }
 
@@ -742,6 +743,34 @@ function renderBrokerInfo(){
   nameEl.textContent = nameLine;
   contactEl.textContent = currentProfile.whatsapp ? 'WhatsApp: ' + currentProfile.whatsapp : '';
   wrap.style.display = 'block';
+}
+
+// Troca a logo exibida (cabeçalho do app + tela de escolha de produto) pela
+// da imobiliária do corretor logado. Se ele não tiver imobiliária
+// vinculada ou ela não tiver logo cadastrada, mantém a logo padrão
+// (arquivo logo.png, da Militão Imóveis).
+function applyAgencyLogo(){
+  const agency = currentProfile && currentProfile.agencies;
+  const logoSrc = (agency && agency.logo_base64) ? agency.logo_base64 : 'logo.png';
+  const headerLogo = document.getElementById('appHeaderLogo');
+  const pickerLogo = document.getElementById('productPickerLogo');
+  if (headerLogo) headerLogo.src = logoSrc;
+  if (pickerLogo) pickerLogo.src = logoSrc;
+}
+
+// Retorna a logo (e o formato de imagem certo) a usar no PDF: a da
+// imobiliária do corretor logado, ou a padrão (Militão Imóveis) se ele
+// não tiver uma configurada.
+function getPdfLogoData(){
+  const agency = currentProfile && currentProfile.agencies;
+  if (agency && agency.logo_base64){
+    const dataUri = agency.logo_base64;
+    const match = dataUri.match(/^data:image\/(\w+);base64,/i);
+    let format = match ? match[1].toUpperCase() : 'PNG';
+    if (format === 'JPG') format = 'JPEG';
+    return { data: dataUri, format };
+  }
+  return { data: LOGO_BASE64, format: 'PNG' };
 }
 
 async function proceedAfterAccess(user){
@@ -1228,7 +1257,10 @@ function generatePdf(){
     const muted = [95,110,124];
 
     // logo + header
-    try { doc.addImage(LOGO_BASE64, 'PNG', marginX, y-8, 20, 20); } catch(e){}
+    try {
+      const logoInfo = getPdfLogoData();
+      doc.addImage(logoInfo.data, logoInfo.format, marginX, y-8, 20, 20);
+    } catch(e){}
     doc.setFont('helvetica','bold');
     doc.setFontSize(16);
     doc.setTextColor(...navy);
