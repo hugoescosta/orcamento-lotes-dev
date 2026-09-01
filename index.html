@@ -463,7 +463,7 @@
       <div class="broker-footer-name" id="brokerFooterName"></div>
       <div class="broker-footer-contact" id="brokerFooterContact"></div>
     </div>
-    <div class="version-tag">v4.4 · 2026-09-01</div>
+    <div class="version-tag">v4.5 · 2026-09-01</div>
   </footer>
 </div>
 
@@ -905,17 +905,33 @@ const byCode = new Map();
 // de um arquivo estático — assim cada usuário só enxerga os dados dos
 // produtos que tiver sido liberado (protegido por regra de segurança no banco).
 async function loadLotesForProduct(productId){
-  const { data, error } = await sb
-    .from('lotes')
-    .select('quadra,lote,area,valor,entrada,avista,p12,p24,p36,sem_balao,balao_anual,com_balao,sem_entrada')
-    .eq('product_id', productId);
+  // Busca em blocos de 1000 (limite padrão do Supabase por consulta) até
+  // trazer todos os lotes do produto — sem isso, produtos com mais de
+  // 1000 lotes ficavam com os últimos cortados silenciosamente.
+  const PAGE_SIZE = 1000;
+  let allRows = [];
+  let from = 0;
 
-  if (error || !data){
-    console.error('Erro ao carregar lotes:', error);
-    return false;
+  while (true){
+    const { data, error } = await sb
+      .from('lotes')
+      .select('quadra,lote,area,valor,entrada,avista,p12,p24,p36,sem_balao,balao_anual,com_balao,sem_entrada')
+      .eq('product_id', productId)
+      .order('id', { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error){
+      console.error('Erro ao carregar lotes:', error);
+      return false;
+    }
+    if (!data || data.length === 0) break;
+
+    allRows = allRows.concat(data);
+    if (data.length < PAGE_SIZE) break; // última página
+    from += PAGE_SIZE;
   }
 
-  LOTES_DATA = data.map(r => [
+  LOTES_DATA = allRows.map(r => [
     r.quadra, r.lote, r.area, r.valor, r.entrada, r.avista,
     r.p12, r.p24, r.p36, r.sem_balao, r.balao_anual, r.com_balao, r.sem_entrada
   ]);
