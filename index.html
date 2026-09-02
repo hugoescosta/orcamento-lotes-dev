@@ -479,7 +479,7 @@ if (window.top !== window.self){
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 // ====== VERSÃO DO APP (aparece no rodapé e no nome do PDF baixado) ======
-const APP_VERSION = 'v5.4';
+const APP_VERSION = 'v5.5';
 const APP_VERSION_DATE = '2026-09-02';
 document.getElementById('versionTag').textContent = APP_VERSION + ' · ' + APP_VERSION_DATE;
 
@@ -732,7 +732,11 @@ async function periodicDeviceCheck(){
     await sb.auth.signOut();
     currentProfile = null;
     showLogin('Sua conta foi acessada em outro dispositivo. Faça login novamente para continuar usando este aparelho.');
+    return;
   }
+  // "Sinal de vida": registra que o app continua aberto e a sessão válida,
+  // usado pelo painel local pra mostrar quem está com o app aberto agora.
+  await logEvent('heartbeat', {});
 }
 setInterval(periodicDeviceCheck, 90000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) periodicDeviceCheck(); });
