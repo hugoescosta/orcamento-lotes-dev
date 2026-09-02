@@ -479,7 +479,7 @@ if (window.top !== window.self){
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 // ====== VERSÃO DO APP (aparece no rodapé e no nome do PDF baixado) ======
-const APP_VERSION = 'v5.0';
+const APP_VERSION = 'v5.1';
 const APP_VERSION_DATE = '2026-09-01';
 document.getElementById('versionTag').textContent = APP_VERSION + ' · ' + APP_VERSION_DATE;
 
@@ -509,6 +509,7 @@ const resetBtn = document.getElementById('resetBtn');
 
 let userProducts = [];
 let currentProductId = null;
+let currentProductName = null;
 
 function hideAllScreens(){
   loginScreen.style.display = 'none';
@@ -566,6 +567,7 @@ function showProductPicker(products){
 
 async function selectProduct(product){
   currentProductId = product.id;
+  currentProductName = product.name;
   showLoading();
   const ok = await loadLotesForProduct(product.id);
   if (!ok){
@@ -926,6 +928,7 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
   currentProfile = null;
   userProducts = [];
   currentProductId = null;
+  currentProductName = null;
   currentUserId = null;
   currentUserEmail = null;
   document.getElementById('brokerFooter').style.display = 'none';
@@ -1284,7 +1287,8 @@ function generatePdf(){
     doc.setFont('courier','normal');
     doc.setFontSize(9.5);
     doc.setTextColor(...muted);
-    doc.text(lastResult.code + '  ·  Plano ' + lastResult.planLabel, marginX, y);
+    const produtoTexto = currentProductName ? ('Produto: ' + currentProductName + '  ·  ') : '';
+    doc.text(produtoTexto + lastResult.code + '  ·  Plano ' + lastResult.planLabel, marginX, y);
     y += 10;
 
     // spec rows
