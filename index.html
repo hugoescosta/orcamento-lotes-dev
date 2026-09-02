@@ -479,8 +479,8 @@ if (window.top !== window.self){
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 // ====== VERSÃO DO APP (aparece no rodapé e no nome do PDF baixado) ======
-const APP_VERSION = 'v5.2';
-const APP_VERSION_DATE = '2026-09-01';
+const APP_VERSION = 'v5.3';
+const APP_VERSION_DATE = '2026-09-02';
 document.getElementById('versionTag').textContent = APP_VERSION + ' · ' + APP_VERSION_DATE;
 
 // ====== CONFIGURAÇÃO DO SUPABASE (login e controle de validade) ======
@@ -1233,9 +1233,9 @@ document.getElementById('go').addEventListener('click', () => {
       const balao = row[IDX.balaoAnual];
       const balaoDesc = balao * (1-desconto);
       addSpec('Balão anual (12x)', balao, balaoDesc);
-      setLabelNote('144x — Com Balão', 'Parcela mensal reduzida + 1 balão anual (12 parcelas do balão ao longo do contrato). Correção: IPCA+6% a.a. (fixo).');
+      setLabelNote('144x — Com Balão', 'Parcela mensal reduzida + 1 balão anual (12 parcelas do balão ao longo do contrato). Correção: IPCA+6% a.a.');
     } else {
-      setLabelNote('144x — Sem Balão', 'Entrada facilitada + 144 parcelas mensais de financiamento, sem balão anual. Correção: IPCA+6% a.a. (fixo).');
+      setLabelNote('144x — Sem Balão', 'Entrada facilitada + 144 parcelas mensais de financiamento, sem balão anual. Correção: IPCA+6% a.a.');
     }
   }
 
