@@ -479,7 +479,7 @@ if (window.top !== window.self){
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 // ====== VERSÃO DO APP (aparece no rodapé e no nome do PDF baixado) ======
-const APP_VERSION = 'v5.3';
+const APP_VERSION = 'v5.4';
 const APP_VERSION_DATE = '2026-09-02';
 document.getElementById('versionTag').textContent = APP_VERSION + ' · ' + APP_VERSION_DATE;
 
@@ -670,7 +670,7 @@ async function checkAccess(user){
 
   const { data: profile, error } = await sb
     .from('profiles')
-    .select('expires_at, active, display_name, whatsapp, creci, must_change_password, active_device_id, agencies(name, logo_base64)')
+    .select('expires_at, active, display_name, whatsapp, creci, must_change_password, active_device_id, agencies(name, logo_base64, creci)')
     .eq('id', user.id)
     .single();
 
@@ -1276,7 +1276,10 @@ function generatePdf(){
     doc.setFont('helvetica','normal');
     doc.setFontSize(10.5);
     doc.setTextColor(...muted);
-    doc.text((currentProfile && currentProfile.agencies && currentProfile.agencies.name) ? currentProfile.agencies.name : 'Militão Imóveis', marginX + 26, y + 6);
+    const agenciaInfo = (currentProfile && currentProfile.agencies)
+      ? currentProfile.agencies.name + (currentProfile.agencies.creci ? ' — Creci ' + currentProfile.agencies.creci : '')
+      : 'Militão Imóveis';
+    doc.text(agenciaInfo, marginX + 26, y + 6);
 
     y += 20;
     doc.setDrawColor(...navy);
