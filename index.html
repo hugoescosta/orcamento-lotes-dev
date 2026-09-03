@@ -479,7 +479,7 @@ if (window.top !== window.self){
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 // ====== VERSÃO DO APP (aparece no rodapé e no nome do PDF baixado) ======
-const APP_VERSION = 'v5.5';
+const APP_VERSION = 'v5.6';
 const APP_VERSION_DATE = '2026-09-02';
 document.getElementById('versionTag').textContent = APP_VERSION + ' · ' + APP_VERSION_DATE;
 
@@ -1211,12 +1211,15 @@ document.getElementById('go').addEventListener('click', () => {
         : `Entrada + ${n} parcelas mensais, com correção IPCA sobre o saldo.`);
 
   } else if (currentCondicao === 'semEntrada'){
-    const financ = row[IDX.semEntrada];
+    // Calculado direto (valor total ÷ 144 parcelas do financiamento), sem
+    // depender de uma coluna guardada no banco — sempre consistente com o
+    // valor do lote, mesmo que ele mude.
+    const financ = valor / 144;
     const financDesc = financ * (1-desconto);
     addArea();
     addSpec('Valor', valor, valorDesc);
     addSpec('Financiamento (1 + 143x)', financ, financDesc);
-    setLabelNote('144x — Sem Entrada', 'Sem entrada: 1ª parcela + 143 parcelas mensais. Correção: IPCA+6% ao ano sobre o saldo.');
+    setLabelNote('144x — Sem Entrada', 'Sem entrada: valor total dividido em 144 parcelas mensais. Correção: IPCA+6% ao ano sobre o saldo.');
 
   } else {
     const entrada = row[IDX.entrada];
